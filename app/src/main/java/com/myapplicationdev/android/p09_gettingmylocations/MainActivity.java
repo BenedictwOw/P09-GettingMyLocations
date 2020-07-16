@@ -1,8 +1,10 @@
 package com.myapplicationdev.android.p09_gettingmylocations;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.PermissionChecker;
+import androidx.fragment.app.FragmentManager;
 
 import android.Manifest;
 import android.content.Intent;
@@ -19,6 +21,14 @@ import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
@@ -31,18 +41,22 @@ public class MainActivity extends AppCompatActivity {
     TextView tvLang,tvLong;
     LocationCallback mLocationCallback;
     LocationRequest mLocationRequest;
+    private GoogleMap map;
     Button btnStart, btnStop, btnCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         client = LocationServices.getFusedLocationProviderClient(this);
         tvLang = findViewById(R.id.tvLang);
         tvLong = findViewById(R.id.tvLong);
         btnStart = findViewById(R.id.btnStartDetector);
         btnStop = findViewById(R.id.btnStopDetector);
         btnCheck = findViewById(R.id.btnCheckRecords);
+
+
         //added this
         final String folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/P09";
         File folder = new File(folderLocation);
@@ -57,13 +71,45 @@ public class MainActivity extends AppCompatActivity {
             Task<Location> task = client.getLastLocation();
             task.addOnSuccessListener(MainActivity.this, new OnSuccessListener<Location>() {
                 @Override
-                public void onSuccess(Location location) {
+                public void onSuccess(final Location location) {
                     //Get last known location.
                     if(location != null){
                         String msg = "Latitude : " + location.getLatitude();
                         String msg2 = "Longtitude: " + location.getLongitude();
                         tvLang.setText(msg);
                         tvLong.setText(msg2);
+                        FragmentManager fm = getSupportFragmentManager();
+                        SupportMapFragment mapFragment = (SupportMapFragment)
+                                fm.findFragmentById(R.id.map);
+                        mapFragment.getMapAsync(new OnMapReadyCallback(){
+                            @Override
+                            public void onMapReady(GoogleMap googleMap) {
+                                map = googleMap;
+
+                                LatLng poi_CausewayPoint = new LatLng(location.getLatitude(), location.getLongitude());
+                                Marker cp = map.addMarker(new
+                                        MarkerOptions()
+                                        .position(poi_CausewayPoint)
+                                        .title("18044928")
+                                        .snippet("You have been here")
+                                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)));
+
+
+                                map.moveCamera(CameraUpdateFactory.newLatLngZoom(poi_CausewayPoint,
+                                        15));
+                                int permissionCheck = ContextCompat.checkSelfPermission(MainActivity.this,
+                                        android.Manifest.permission.ACCESS_FINE_LOCATION);
+
+                                if (permissionCheck == PermissionChecker.PERMISSION_GRANTED) {
+                                    map.setMyLocationEnabled(true);
+                                } else {
+                                    Log.e("GMap - Permission", "GPS access has not been granted");
+                                    ActivityCompat.requestPermissions(MainActivity.this,
+                                            new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 0);
+                                }
+                            }
+
+                        });
                     }else{
                         String msg = "No last known location found";
                         Toast.makeText(MainActivity.this, msg, Toast.LENGTH_SHORT).show();
