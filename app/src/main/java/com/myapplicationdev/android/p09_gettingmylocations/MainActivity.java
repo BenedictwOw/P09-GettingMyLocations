@@ -8,6 +8,8 @@ import android.Manifest;
 import android.content.Intent;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
@@ -20,12 +22,16 @@ import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+
 public class MainActivity extends AppCompatActivity {
     FusedLocationProviderClient client;
     TextView tvLang,tvLong;
     LocationCallback mLocationCallback;
     LocationRequest mLocationRequest;
-    Button btnStart, btnStop;
+    Button btnStart, btnStop, btnCheck;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +42,16 @@ public class MainActivity extends AppCompatActivity {
         tvLong = findViewById(R.id.tvLong);
         btnStart = findViewById(R.id.btnStartDetector);
         btnStop = findViewById(R.id.btnStopDetector);
+        btnCheck = findViewById(R.id.btnCheckRecords);
+        //added this
+        final String folderLocation = Environment.getExternalStorageDirectory().getAbsolutePath() + "/P09";
+        File folder = new File(folderLocation);
+        if(folder.exists() == false){
+            boolean result = folder.mkdir();
+            if(result == true){
+                Log.d("File Read/Write","Folder created");
+            }
+        }
 
         if(checkPermission() == true){
             Task<Location> task = client.getLastLocation();
@@ -67,6 +83,34 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View v) {
                 Intent i = new Intent(MainActivity.this, MyService.class);
                 stopService(i);
+            }
+        });
+        btnCheck.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                File targetFile = new File(folderLocation, "data.txt");
+                if(targetFile.exists() == true){
+                    String data = "";
+                    try{
+                        FileReader reader = new FileReader(targetFile);
+                        BufferedReader br = new BufferedReader(reader);
+                        String line = br.readLine();
+                        while (line != null){
+                            data += line +"\n";
+                            line = br.readLine();
+                            while(line != null){
+                                data += line + "\n";
+                                line = br.readLine();
+                            }
+                        }
+                        br.close();
+                        reader.close();
+                    } catch (Exception e) {
+                        Toast.makeText(MainActivity.this,"Failed to read!",Toast.LENGTH_LONG).show();
+                        e.printStackTrace();
+                    }
+                    Toast.makeText(MainActivity.this,data,Toast.LENGTH_LONG).show();
+                }
             }
         });
     }
